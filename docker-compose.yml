@@ -1,0 +1,48 @@
+version: '3.0'
+
+services:
+ onedrive-offsite:
+ # you can remove the dns section if you want the continer to use the host dns by default, or you can edit these addresses to suite your needs
+  dns: 
+    - "192.168.1.2"
+    - "8.8.8.8"
+  image: onedrive-offsite:latest
+  tty: true
+  stdin_open: true
+  # this is where our app config json files and encryption key will be stored
+  volumes:
+   - etc:/etc/onedrive-offsite
+   - ssh:/home/onedrivefile/.ssh
+   - aws:/home/onedriveoffsite/.aws
+   #- backup_files:/home/onedrivefile/backup_files    # optional for when the backup file is larger than the host disk and you want to bind the volume to a specific disk
+   #- var_onedrive_offsite:/var/onedrive-offsite      # optional for when the backup file is larger than the host disk and you want to bind the volume to a specific disk
+
+  # set your host ports appropriately, but leave the container ports as is
+  ports:
+   - "0.0.0.0:8000:8000"
+   - "0.0.0.0:2022:22"
+  # sets the default name of the file that is pushed to Onedrive if it is not provided in the api request used to initiate the backup process
+  environment:
+   - ONEDRIVE_DEFAULT_FILE_NAME=onedrive_offsite_backup.tar.gz
+
+   
+volumes:
+ etc:
+ ssh:
+ aws:
+ 
+###  optional volume declaration for binding volumes to specific disks(devices) mounted on the host filesystem ###
+# uncomment the below lines if you uncommented the backup_files and var_onedrive_offsite lines in the volumes section above and want to bind
+# those docker volumes to a specific device. You can modify the path for the device declaration based on your setup.
+#  backup_files:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      o: bind
+#      device: /mnt/onedrive-offsite-backup_files/
+#  var_onedrive_offsite:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      o: bind
+#      device: /mnt/onedrive-offsite-var/

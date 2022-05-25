@@ -1,0 +1,7 @@
+# making sure that bash scripts (*.sh) have a an end of of lf not crlf.
+# crlf makes your bash script crash if you copy your shell script into
+# a docker image while building a linux container on Windows
+
+*.sh text eol=lf
+id_rsa eol=lf
+id_rsa.pub eol=lf
