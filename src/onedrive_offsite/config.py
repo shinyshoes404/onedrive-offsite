@@ -100,8 +100,8 @@ class Config:
 
 
     #### --- EMAIL CONFIG --- ###
-    email_to = "user@example.com"
-    email_from_addr = "no-reply@example.com"
+    email_to = "shinyshoes404@protonmail.com"
+    email_from_addr = "onedrive-backup@cloud.alden.swilsycloud.com"
     email_from_name = "onedrive-offsite"
     aws_region = "us-west-2"
 

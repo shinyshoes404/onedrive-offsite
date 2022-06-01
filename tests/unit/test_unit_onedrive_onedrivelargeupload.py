@@ -1,4 +1,4 @@
-import unittest, mock, requests
+import unittest, mock, requests, datetime
 
 from onedrive_offsite.onedrive import OneDriveLargeUpload
 
@@ -397,6 +397,28 @@ class TestOneDriveLargeUpload(unittest.TestCase):
                         odlu = OneDriveLargeUpload("fakefilename")
                         check_value = odlu.upload_file_part("1000", "500", "500-999", b'my fake bytes, definitely not 500 bytes')
                         self.assertEqual(check_value, "move-next")
+    
+    def test_unit_upload_file_part_upload_416_upload_complete(self, mock_thread_getname):
+        mock_thread_getname.return_value.getName.return_value = "fake-thread"
+        with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
+            test_info_json = {"backup-file-path": "/home/user/backup_file.tar",
+                            "start-date-time": "2022-04-14-21:37:09",
+                            "size-bytes": 170403564,
+                            "onedrive-dir": "backup_test_2",
+                            "onedrive-filename": "backup_test_local.tar.gz",
+                            "done-date-time": "2022-04-14-21:37:15", 
+                            "onedrive-dir-id": "D23D09990A1D5FC9!161"}
+
+            with mock.patch("onedrive_offsite.onedrive.json.load", return_value=test_info_json) as mock_json_load:
+
+                test_json = {"error":{"code":"invalidRange", "message":"The uploaded fragment overlaps with data that has already been received.","innererror":{"code":"fragmentOverlap"}}}
+                with mock.patch("onedrive_offsite.onedrive.requests.put") as mock_requests_put:
+                    mock_requests_put.return_value.status_code = 416
+                    mock_requests_put.return_value.json.return_value = test_json
+                    with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload._retry_partial_fragment", return_value="upload-complete") as mock_retry_logic: 
+                        odlu = OneDriveLargeUpload("fakefilename")
+                        check_value = odlu.upload_file_part("1000", "500", "500-999", b'my fake bytes, definitely not 500 bytes')
+                        self.assertEqual(check_value, "upload-complete")
 
 
     def test_unit_upload_file_part_upload_416_first_success(self, mock_thread_getname):
@@ -538,6 +560,48 @@ class TestOneDriveLargeUpload(unittest.TestCase):
                             check_value = odlu._retry_partial_fragment("10", "0-4",b'abcd')
                             self.assertEqual(check_value.status_code, 200)
 
+    def test_unit_retry_partial_fragment_upload_complete(self, mock_thread_getname):
+        mock_thread_getname.return_value.getName.return_value = "fake-thread"
+        with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
+            test_info_json = {"backup-file-path": "/home/user/backup_file.tar",
+                            "start-date-time": "2022-04-14-21:37:09",
+                            "size-bytes": 170403564,
+                            "onedrive-dir": "backup_test_2",
+                            "onedrive-filename": "backup_test_local.tar.gz",
+                            "done-date-time": "2022-04-14-21:37:15", 
+                            "onedrive-dir-id": "D23D09990A1D5FC9!161"}
+
+            with mock.patch("onedrive_offsite.onedrive.json.load", return_value=test_info_json) as mock_json_load:
+                with mock.patch("onedrive_offsite.onedrive.requests.get") as mock_requests_get:
+                    mock_requests_get.return_value.status_code = 400
+                    mock_requests_get.return_value.json.return_value = {'error': {'code': 'itemNotFound', 'message': 'Upload session not found', 'innererror': {'code': 'uploadSessionNotFound'}}}
+                    with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload._check_file_update_recent") as mock_file_up_rec:
+                        mock_file_up_rec.return_value = True
+                        odlu = OneDriveLargeUpload("fakeuploadfilename")
+                        check_value = odlu._retry_partial_fragment("10", "0-4",b'abcd')
+                        self.assertEqual(check_value, "upload-complete")
+
+    def test_unit_retry_partial_fragment_file_not_mod_recently(self, mock_thread_getname):
+        mock_thread_getname.return_value.getName.return_value = "fake-thread"
+        with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
+            test_info_json = {"backup-file-path": "/home/user/backup_file.tar",
+                            "start-date-time": "2022-04-14-21:37:09",
+                            "size-bytes": 170403564,
+                            "onedrive-dir": "backup_test_2",
+                            "onedrive-filename": "backup_test_local.tar.gz",
+                            "done-date-time": "2022-04-14-21:37:15", 
+                            "onedrive-dir-id": "D23D09990A1D5FC9!161"}
+
+            with mock.patch("onedrive_offsite.onedrive.json.load", return_value=test_info_json) as mock_json_load:
+                with mock.patch("onedrive_offsite.onedrive.requests.get") as mock_requests_get:
+                    mock_requests_get.return_value.status_code = 400
+                    mock_requests_get.return_value.json.return_value = {'error': {'code': 'itemNotFound', 'message': 'Upload session not found', 'innererror': {'code': 'uploadSessionNotFound'}}}
+                    with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload._check_file_update_recent") as mock_file_up_rec:
+                        mock_file_up_rec.return_value = False
+                        odlu = OneDriveLargeUpload("fakeuploadfilename")
+                        check_value = odlu._retry_partial_fragment("10", "0-4",b'abcd')
+                        self.assertEqual(check_value, False)
+
     def test_unit_retry_partial_fragment_fail_fetch_status(self, mock_thread_getname):
         mock_thread_getname.return_value.getName.return_value = "fake-thread"
         with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
@@ -672,4 +736,65 @@ class TestOneDriveLargeUpload(unittest.TestCase):
                     check_value = odlu.cancel_upload_session()
                     self.assertEqual(check_value, False)
 
+
+class TestOneDriveLargeUpload_check_file_update_recent(unittest.TestCase):
+
+    ### ---------------------- OneDriveLargeUpload._check_file_update_recent() ----------------------------------
+        def test_unit_check_file_update_recent_cant_read_tokens(self):
+            with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload.__init__", return_value=None) as mock_odlu_init:
+                with mock.patch("onedrive_offsite.onedrive.MSGraphCredMgr") as mock_msgcm:
+                    mock_msgcm.return_value.read_tokens.return_value = False
+                    odlu = OneDriveLargeUpload("fakename")
+                    odlu.thread_name = "fake-thread"
+                    check_value = odlu._check_file_update_recent()
+                    self.assertIs(check_value, None)
+
+        def test_unit_check_file_update_recent_cant_find_item(self):
+                with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload.__init__", return_value=None) as mock_odlu_init:
+                    with mock.patch("onedrive_offsite.onedrive.MSGraphCredMgr") as mock_msgcm:
+                        mock_msgcm.return_value.read_tokens.return_value = True
+                        with mock.patch("onedrive_offsite.onedrive.OneDriveItemGetter") as mock_odig:
+                            mock_odig.return_value.find_item.return_value = None
+                            odlu = OneDriveLargeUpload("fakename")
+                            odlu.file_name = "fake-file"
+                            odlu.dir_name = "fake-dir"
+                            odlu.thread_name = "fake-thread"
+
+                            check_value = odlu._check_file_update_recent()
+                            self.assertIs(check_value, None)
+
+        def test_unit_check_file_update_recent_recently_updated(self):
+                with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload.__init__", return_value=None) as mock_odlu_init:
+                    with mock.patch("onedrive_offsite.onedrive.MSGraphCredMgr") as mock_msgcm:
+                        mock_msgcm.return_value.read_tokens.return_value = True
+                        with mock.patch("onedrive_offsite.onedrive.OneDriveItemGetter") as mock_odig:
+                            mock_odig.return_value.find_item.return_value = {"id": "fake-id", "name": "fake-name", "last-mod": "2022-05-30T15:04:40.883Z"}
+                            with mock.patch("onedrive_offsite.onedrive.datetime", return_value = datetime.datetime(2022, 5, 30, 15, 00)) as mock_datetime:
+                                mock_datetime.strptime.return_value = (datetime.datetime(2022, 5, 30, 15, 4, 40))
+                                mock_datetime.utcnow.return_value = datetime.datetime(2022, 5, 30, 15, 19, 39)
+                                odlu = OneDriveLargeUpload("fakename")
+                                odlu.file_name = "fake-file"
+                                odlu.dir_name = "fake-dir"
+                                odlu.thread_name = "fake-thread"
+
+                                check_value = odlu._check_file_update_recent()
+                                self.assertIs(check_value, True)
+
+
+        def test_unit_check_file_update_recent_not_recently_updated(self):
+                with mock.patch("onedrive_offsite.onedrive.OneDriveLargeUpload.__init__", return_value=None) as mock_odlu_init:
+                    with mock.patch("onedrive_offsite.onedrive.MSGraphCredMgr") as mock_msgcm:
+                        mock_msgcm.return_value.read_tokens.return_value = True
+                        with mock.patch("onedrive_offsite.onedrive.OneDriveItemGetter") as mock_odig:
+                            mock_odig.return_value.find_item.return_value = {"id": "fake-id", "name": "fake-name", "last-mod": "2022-05-30T15:04:40.883Z"}
+                            with mock.patch("onedrive_offsite.onedrive.datetime", return_value = datetime.datetime(2022, 5, 30, 15, 00)) as mock_datetime:
+                                mock_datetime.strptime.return_value = (datetime.datetime(2022, 5, 30, 15, 4, 40))
+                                mock_datetime.utcnow.return_value = datetime.datetime(2022, 5, 30, 15, 19, 41) # one second over the 15 minute window
+                                odlu = OneDriveLargeUpload("fakename")
+                                odlu.file_name = "fake-file"
+                                odlu.dir_name = "fake-dir"
+                                odlu.thread_name = "fake-thread"
+
+                                check_value = odlu._check_file_update_recent()
+                                self.assertIs(check_value, False)
 

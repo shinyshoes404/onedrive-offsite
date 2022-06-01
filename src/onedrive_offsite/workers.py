@@ -198,7 +198,7 @@ def _worker_upload(bytes_to_send, targz_file, chunks, fpr, upload_attempted_q, k
         try:
             upload_response = odlu.upload_file_part(str(fpr.file_size), str(chunks[0]), chunks[2], bytes_to_send)
 
-            if upload_response == "move-next":
+            if upload_response == "move-next" or upload_response == "upload-complete":
                 return "upload-succeeded"
 
             # if we run into an issue while uploading, cancel the upload and stop looping through the file chunks
@@ -689,7 +689,8 @@ class DownloadWorker:
         logger.info("starting thread {0}".format(thread_name))
         start_time = datetime.now() # initialize start time variable so that we can prevent this while loop from running forever
         
-        file_download_status = None
+        # this variable is not being used again, commenting out
+        #file_download_status = None
 
         while kill_q.empty():
             try:

@@ -1,4 +1,4 @@
-import math, tarfile, os, logging, json, shutil, mock
+import math, tarfile, os, logging, json, shutil, mock, threading
 from onedrive_offsite.config import Config
 
 
@@ -455,4 +455,18 @@ def decrypt_email(error: bool=False) -> bool:
             logger.error("problem sending email.")
             return False
 
+
+def read_backup_file_info() -> dict:
+    thread_name = threading.current_thread().getName()
+    
+    try:
+        with open(Config.backup_file_info_path, "r") as info_file:
+            info_json = json.load(info_file)
+
+    except Exception as e:
+        logger.error("thread: {0} - problem reading backup file info to get directory info".format(thread_name))
+        logger.error(e)
+        return None
+
+    return info_json
 

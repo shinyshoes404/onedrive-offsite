@@ -99,14 +99,23 @@ class TestOneDriveItemGetter(unittest.TestCase):
         check_val = odig._process_json({"value":[{"id": "id1", "no-name": "no-name-value"}]})
         self.assertIs(check_val, None)
 
+    def test_unit_process_json_missing_lastmodifieddatetime_key(self, mock_curr_thread):
+        mock_curr_thread.return_value.getName.return_value = "fake-thread"
+
+        access_token = "fakeaccesstoken"
+        dir_name = "fake_dir_name"        
+        odig = OneDriveItemGetter(access_token, dir_name)
+        check_val = odig._process_json({"value":[{"id": "id1", "name": "name1"}]})
+        self.assertIs(check_val, None)
+
     def test_unit_process_json_works_two_items(self, mock_curr_thread):
         mock_curr_thread.return_value.getName.return_value = "fake-thread"
 
         access_token = "fakeaccesstoken"
         dir_name = "fake_dir_name"        
         odig = OneDriveItemGetter(access_token, dir_name)
-        check_val = odig._process_json({"value":[{"id": "id-1", "name": "name-1"}, {"id": "id-2", "name": "name-2"}]})
-        self.assertEqual(check_val, [{"id": "id-1", "name": "name-1"}, {"id": "id-2", "name": "name-2"}])
+        check_val = odig._process_json({"value":[{"id": "id-1", "name": "name-1", "lastModifiedDateTime": "2022-05-30T15:04:40.883Z"}, {"id": "id-2", "name": "name-2", "lastModifiedDateTime": "2022-05-30T15:04:40.855Z"}]})
+        self.assertEqual(check_val, [{"id": "id-1", "name": "name-1", "last-mod": "2022-05-30T15:04:40.883Z"}, {"id": "id-2", "name": "name-2", "last-mod":"2022-05-30T15:04:40.855Z"}])
 
 
     #### ------------------ OneDriveItemGetter._get_dir_items() --------------------------
@@ -178,3 +187,37 @@ class TestOneDriveItemGetter(unittest.TestCase):
                 
                 check_val = odig.get_dir_items()
                 self.assertIs(check_val, None)
+
+    #### ------------------ OneDriveItemGetter.find_item() --------------------------
+    def test_unit_find_item_no_item_list(self, mock_curr_thread):
+        mock_curr_thread.return_value.getName.return_value = "fake-thread" 
+        with mock.patch("onedrive_offsite.onedrive.OneDriveItemGetter.get_dir_items", return_value = None) as mock_get_dir_items:
+
+                access_token = "fakeaccesstoken"
+                dir_name = "fake_dir_name"        
+                odig = OneDriveItemGetter(access_token, dir_name)
+                
+                check_val = odig.find_item("fake-item")
+                self.assertIs(check_val, None)
+
+    def test_unit_find_item_cant_find_item(self, mock_curr_thread):
+        test_item_list = [{"id": "id1", "name":"name1", "last-mod": "2022-05-30T10:01:01.001Z"}, {"id": "id2", "name":"name2", "last-mod": "2022-05-30T10:01:01.001Z"}]
+        mock_curr_thread.return_value.getName.return_value = "fake-thread" 
+        with mock.patch("onedrive_offsite.onedrive.OneDriveItemGetter.get_dir_items", return_value = test_item_list) as mock_get_dir_items:
+                access_token = "fakeaccesstoken"
+                dir_name = "fake_dir_name"        
+                odig = OneDriveItemGetter(access_token, dir_name)
+                
+                check_val = odig.find_item("fake-item")
+                self.assertIs(check_val, None)
+
+    def test_unit_find_item_successfully_find_item(self, mock_curr_thread):
+        test_item_list = [{"id": "id1", "name":"name1", "last-mod": "2022-05-30T10:01:01.001Z"}, {"id": "id2", "name":"name2", "last-mod": "2022-05-30T10:01:01.001Z"}]
+        mock_curr_thread.return_value.getName.return_value = "fake-thread" 
+        with mock.patch("onedrive_offsite.onedrive.OneDriveItemGetter.get_dir_items", return_value = test_item_list) as mock_get_dir_items:
+                access_token = "fakeaccesstoken"
+                dir_name = "fake_dir_name"        
+                odig = OneDriveItemGetter(access_token, dir_name)
+                
+                check_val = odig.find_item("name2")
+                self.assertEqual(check_val, {"id": "id2", "name":"name2", "last-mod": "2022-05-30T10:01:01.001Z"})

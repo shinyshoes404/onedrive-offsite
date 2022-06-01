@@ -1,7 +1,7 @@
 import unittest, mock, os, shutil
 from onedrive_offsite.config import Config
 
-from onedrive_offsite.utils import leading_zeros, make_tar_gz, FilePartialRead, get_file_groups, ses_send_email, file_cleanup, get_recent_log_lines, download_file_email, extract_tar_gz, decrypt_email
+from onedrive_offsite.utils import leading_zeros, make_tar_gz, FilePartialRead, get_file_groups, ses_send_email, file_cleanup, get_recent_log_lines, download_file_email, extract_tar_gz, decrypt_email, read_backup_file_info
 
 
 class TestUtilsleadingzeros(unittest.TestCase):
@@ -377,3 +377,33 @@ class TestUtilsdecryptemail(unittest.TestCase):
     def test_unit_decrypt_email_info_read_succeed_email_fail(self, mock_open, mock_send_email, mock_load_json):
         check_val = decrypt_email()
         self.assertIs(check_val, False)
+
+
+class TestUtilsread_backup_file(unittest.TestCase):
+
+    @mock.patch("onedrive_offsite.utils.Config")
+    def test_unit_read_backup_file_exception(self, mock_config):
+        mock_config.backup_file_info_path = "fake-path"
+        with mock.patch("onedrive_offsite.utils.threading.current_thread") as mock_curr_thread:
+            mock_curr_thread.return_value.getName.return_value = "fake-thread"
+            with mock.patch("onedrive_offsite.utils.open") as mock_open:
+                with mock.patch("onedrive_offsite.utils.json.load", side_effect=Exception("fake-exception")) as mock_json_load:
+                    check_val = read_backup_file_info()
+                    self.assertIs(check_val, None)
+
+    @mock.patch("onedrive_offsite.utils.Config")
+    def test_unit_read_backup_file_successfully_return_info(self, mock_config):
+        mock_config.backup_file_info_path = "fake-path"
+        with mock.patch("onedrive_offsite.utils.threading.current_thread") as mock_curr_thread:
+            mock_curr_thread.return_value.getName.return_value = "fake-thread"
+            with mock.patch("onedrive_offsite.utils.open") as mock_open:
+                test_info_json = {"backup-file-path": "/home/user/backup_file.tar",
+                                "start-date-time": "2022-04-14-21:37:09",
+                                "size-bytes": 170403564,
+                                "onedrive-dir": "backup_test_2",
+                                "onedrive-filename": "backup_test_local.tar.gz",
+                                "done-date-time": "2022-04-14-21:37:15", 
+                                "onedrive-dir-id": "D23D09990A1D5FC9!161"}
+                with mock.patch("onedrive_offsite.utils.json.load", return_value=test_info_json) as mock_json_load:
+                    check_val = read_backup_file_info()
+                    self.assertEqual(check_val, test_info_json)

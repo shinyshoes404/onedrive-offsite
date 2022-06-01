@@ -7,37 +7,36 @@ from onedrive_offsite.onedrive import OneDriveDirMgr
 @mock.patch("onedrive_offsite.onedrive.threading.current_thread")
 class TestOneDriveDirMgr_init(unittest.TestCase):
 
-    def test_unit_onedrivedirmgr_init_except(self, mock_thread_getname):
+    def test_unit_onedrivedirmgr_init_read_info_none(self, mock_thread_getname):
         mock_thread_getname.return_value.getName.return_value = "fake-thread"
-        with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
-            with mock.patch("onedrive_offsite.onedrive.json.load", side_effect=Exception("fake exception")) as mock_json_load:
-                oddm = OneDriveDirMgr("fakeaccesstoken")
-                self.assertEqual(oddm.dir_name, None)
+        with mock.patch("onedrive_offsite.onedrive.read_backup_file_info", return_value = None) as mock_read_info:
+            oddm = OneDriveDirMgr("fakeaccesstoken")
+            self.assertEqual(oddm.dir_name, None)
 
     def test_unit_onedrivedirmgr_init_dir_name_missing(self, mock_thread_getname):
         mock_thread_getname.return_value.getName.return_value = "fake-thread"
-        with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
+        with mock.patch("onedrive_offsite.onedrive.read_backup_file_info") as mock_read_info:
             test_info_json = {"backup-file-path": "/home/user/backup_file.tar",
                             "start-date-time": "2022-04-14-21:37:09",
                             "size-bytes": 170403564,                        
                             "onedrive-filename": "backup_test_local.tar.gz",
                             "done-date-time": "2022-04-14-21:37:15"}
-            with mock.patch("onedrive_offsite.onedrive.json.load", return_value=test_info_json) as mock_json_load:
-                oddm = OneDriveDirMgr("fakeaccesstoken")
-                self.assertEqual(oddm.dir_name, None)
+            mock_read_info.return_value = test_info_json
+            oddm = OneDriveDirMgr("fakeaccesstoken")
+            self.assertEqual(oddm.dir_name, None)
 
     def test_unit_onedrivedirmgr_init_dir_name_present(self, mock_thread_getname):
         mock_thread_getname.return_value.getName.return_value = "fake-thread"
-        with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
+        with mock.patch("onedrive_offsite.onedrive.read_backup_file_info") as mock_read_info:
             test_info_json = {"backup-file-path": "/home/user/backup_file.tar",
                             "start-date-time": "2022-04-14-21:37:09",
                             "size-bytes": 170403564, 
                             "onedrive-dir": "backup_test_2",                       
                             "onedrive-filename": "backup_test_local.tar.gz",
                             "done-date-time": "2022-04-14-21:37:15"}
-            with mock.patch("onedrive_offsite.onedrive.json.load", return_value=test_info_json) as mock_json_load:
-                oddm = OneDriveDirMgr("fakeaccesstoken")
-                self.assertEqual(oddm.dir_name, "backup_test_2")
+            mock_read_info.return_value = test_info_json
+            oddm = OneDriveDirMgr("fakeaccesstoken")
+            self.assertEqual(oddm.dir_name, "backup_test_2")
 
 
 ### -------------------------- OneDriveDirMgr._write_dir_id() ------------------------
@@ -63,7 +62,6 @@ class TestOneDriveDirMgr__write_dir_id(unittest.TestCase):
 
     
     ### ---------------- test cases ----------------------
-
     def test_unit_write_dir_id_except(self):
         with mock.patch("onedrive_offsite.onedrive.threading.current_thread") as mock_thread_getname:
             mock_thread_getname.return_value.getName.return_value = "fake-thread"
@@ -92,12 +90,6 @@ class TestOneDriveDirMgr__write_dir_id(unittest.TestCase):
                     self.assertEqual(check_value, True)
                     self.assertEqual(test_json.get("onedrive-dir-id"), "fake-id") 
 
-
-
-
-if __name__ == "__main__":
-    test = TestOneDriveDirMgr__write_dir_id()
-    test.test_unit_write_dir_id_except()
 
 
 ### -------------------------- OneDriveDirMgr._check_dir_exits() ----------------------------

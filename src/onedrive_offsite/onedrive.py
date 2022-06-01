@@ -1,6 +1,8 @@
-import requests, json, logging, time, datetime, threading, os, mock, math
+import requests, json, logging, time, threading, os, mock, math
 from onedrive_offsite.config import Config
 from onedrive_offsite.crypt import Sha256Calc
+from onedrive_offsite.utils import read_backup_file_info
+from datetime import datetime, timedelta
 
 if os.environ.get("TESTING_ENV") == "test":
     sleep = mock.Mock()
@@ -223,6 +225,9 @@ class OneDriveLargeUpload:
                 elif partial_retry_result == "move-next":
                     logger.info("thread: {0} - partial retry - returning 'move-next'".format(self.thread_name))
                     return "move-next"
+                elif partial_retry_result == "upload-complete":
+                    logger.info("thread: {0} - partial retry - returning 'upload-complete'".format(self.thread_name))
+                    return "upload-complete"
                 else:
                     upload_response = partial_retry_result
                     logger.info("thread: {0} - partial fragment retry succeeded".format(self.thread_name))
@@ -262,6 +267,20 @@ class OneDriveLargeUpload:
         except Exception as e:
             logger.error("thread: {0} - failed to fetch upload status".format(self.thread_name))
             return False
+        
+        # if we get a 400 status because upload session isn't found, check to see if the file was updated recently
+        # if so, we probably just completed our last chunk
+        if status_resp.status_code == 400:
+            if status_json.get("error"):
+                if status_json["error"].get("innererror"):
+                    if status_json["error"]["innererror"].get("code") == "uploadSessionNotFound":
+                        logger.info("thread: {0} - the upload session does not exist, checking to see if the file was modified recently".format(self.thread_name))
+                        if self._check_file_update_recent():
+                            logger.info("thread: {0} - assuming {1} uploaded successfully".format(self.thread_name, self.file_name))
+                            return "upload-complete"
+                        else:
+                            return False
+                        
         
         # get the next byte expected by onedrive
         next_expected_byte = int(status_json.get("nextExpectedRanges")[0][:status_json.get("nextExpectedRanges")[0].find("-")])
@@ -320,6 +339,29 @@ class OneDriveLargeUpload:
         else:
             logger.info("thread: {0} - Problem cancelling upload status code: {1}   response body: {2}".format(self.thread_name, cancel_resp.status_code, cancel_resp.content))
             return False
+    
+    def _check_file_update_recent(self) -> bool:
+        msgcm = MSGraphCredMgr()
+        if not msgcm.read_tokens():
+            logger.error("thread: {0} - problem reading tokens while seeing if upload finished".format(self.thread_name))
+            return None
+        
+        odig = OneDriveItemGetter(msgcm.access_token, self.dir_name)
+        item_info = odig.find_item(self.file_name)
+        if not item_info:
+            logger.error("thread: {0} - unable to find item {1}".format(self.thread_name, self.file_name))
+            return None
+        
+        last_mod_datetime = datetime.strptime(item_info.get("last-mod"), "%Y-%m-%dT%H:%M:%S.%fZ" )
+        if last_mod_datetime >= datetime.utcnow() - timedelta(minutes=15):
+            logger.info("thread: {0} - file {1} was updated in the last 15 min".format(self.thread_name, self.file_name))
+            return True
+        else:
+            logger.warning("thread: {0} - file {1} has not been updated in the last 15 min. Last updated {2}".format(self.thread_name, self.file_name, item_info.get("last-mod")))
+            return False
+
+
+
 
 
 class MSGraphCredMgr:
@@ -346,7 +388,7 @@ class MSGraphCredMgr:
                 creds_json = json.load(json_file)
                 self.access_token = creds_json.get("access_token")
                 self.refresh_token = creds_json.get("refresh_token")
-                self.expires = datetime.datetime.strptime(creds_json.get("expires"),'%Y-%m-%d %H:%M:%S')
+                self.expires = datetime.strptime(creds_json.get("expires"),'%Y-%m-%d %H:%M:%S')
             
         except Exception as e:
             logger.error("thread: {0} - problem reading tokens in read_tokens".format(self.thread_name))
@@ -395,7 +437,7 @@ class MSGraphCredMgr:
                     json_data = {}
                     json_data["access_token"] = resp_json.get("access_token")
                     json_data["refresh_token"] = resp_json.get("refresh_token")
-                    expires = (datetime.datetime.now() + datetime.timedelta(seconds=resp_json.get("expires_in"))).strftime('%Y-%m-%d %H:%M:%S')
+                    expires = (datetime.now() + timedelta(seconds=resp_json.get("expires_in"))).strftime('%Y-%m-%d %H:%M:%S')
                     json_data["expires"] = expires
                     json.dump(json_data, json_file)
                     logger.info("thread: {0} - tokens refreshed".format(self.thread_name))
@@ -418,21 +460,18 @@ class OneDriveDirMgr:
         self.api_url = Config.api_url + '/v1.0/me/drive/special/approot/children'
         self.headers = {"Authorization": "Bearer " + access_token}
 
-        try:
-            with open(Config.backup_file_info_path, "r") as info_file:
-                info_json = json.load(info_file)
-        
-            if info_json.get("onedrive-dir") == None or info_json.get("onedrive-dir") == "":
-                logger.error("thread: {0} - no onedrive-dir in backup file info".format(thread_name))
-                self.dir_name = None
-            else:
-                self.dir_name = info_json.get("onedrive-dir")
-
-        except Exception as e:
+        info_json = read_backup_file_info()
+        if not info_json:
             logger.error("thread: {0} - problem reading backup file info to get directory info".format(thread_name))
-            logger.error(e)
             self.dir_name = None
 
+        elif info_json.get("onedrive-dir") == None or info_json.get("onedrive-dir") == "":
+            logger.error("thread: {0} - no onedrive-dir in backup file info".format(thread_name))
+            self.dir_name = None
+        else:
+            self.dir_name = info_json.get("onedrive-dir")
+
+        
     def _write_dir_id(self, dir_id):
         thread_name = threading.current_thread().getName()
         try:
@@ -702,8 +741,12 @@ class OneDriveItemGetter:
             if not item.get("name"):
                 logger.error("thread: {0} - one of the items is missing the 'name' key".format(self.thread_name))
                 return None
+            
+            if not item.get("lastModifiedDateTime"):
+                logger.error("thread: {0} - one of the items is missing the 'lastModifiedDateTime' key".format(self.thread_name))
+                return None
 
-            item_list.append({"id": item.get("id"), "name": item.get("name")})
+            item_list.append({"id": item.get("id"), "name": item.get("name"), "last-mod": item.get("lastModifiedDateTime")})
         
         return item_list
 
@@ -739,6 +782,16 @@ class OneDriveItemGetter:
             return item_list
         
         logger.error("thread: {0} - unexpected status code in response to get list of items in dir, status code: {1}  content: {2}".format(self.thread_name, resp.status_code, resp.content))
+        return None
+
+    def find_item(self, item_name: str) -> dict:
+        item_list = self.get_dir_items()
+        if item_list:
+            for item in item_list:
+                if item.get("name") == item_name:
+                    return item
+        
+        logger.warning("thread: {0} - item {1} not found in dir {2}".format(self.thread_name, item_name, self.dir_name))
         return None
 
 
