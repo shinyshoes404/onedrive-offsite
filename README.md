@@ -1,11 +1,5 @@
 # onedrive-offsite
 
-## Code coverage
-
-[![coverage](https://git.swilsycloud.com/useful-apps-and-libraries/onedrive-offsite/badges/dev/coverage.svg)](https://git.swilsycloud.com/useful-apps-and-libraries/onedrive-offsite/badges/dev)
-__DEV branch__
-&nbsp; 
-
 ## Overview
 
 onedrive-offsite is an application that encrypts backup files (ex: vma.zst from Proxmox) and pushes them to Microsoft Onedrive via the MS Graph API to create an offsite backup. This application uses a REST API to trigger encryption and offsite backup, as well as download and decryption. Once the offsite backup or download operation is completed successfully, or experiences an error, an email notification is sent using AWS SES.  
