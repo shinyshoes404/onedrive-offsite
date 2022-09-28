@@ -865,13 +865,15 @@ class TestDirManager(unittest.TestCase):
         with mock.patch("onedrive_offsite.workers.threading.current_thread") as mock_curr_thread:
             mock_curr_thread.return_value.getName.return_value = "fake-thread"
             with mock.patch("onedrive_offsite.workers.MSGraphCredMgr") as mock_msgrcrmgr:
-                mock_msgrcrmgr.return_value.read_tokens.return_value = False
+                with mock.patch("onedrive_offsite.onedrive.sleep", return_value = None) as mock_sleep:
+                    mock_msgrcrmgr.return_value.read_tokens.return_value = False
 
-                kill_q = queue.Queue()
-                error_q = queue.Queue()
+                    kill_q = queue.Queue()
+                    error_q = queue.Queue()
+                    dir_complete_q = queue.Queue()
 
-                check_val = dir_manager(kill_q, error_q)
-                self.assertIs(check_val, None)
+                    check_val = dir_manager(kill_q, error_q, dir_complete_q)
+                    self.assertIs(check_val, None)
 
     @mock.patch("onedrive_offsite.workers.flood_kill_queue")
     @mock.patch("onedrive_offsite.workers.write_to_error_q")
@@ -886,8 +888,9 @@ class TestDirManager(unittest.TestCase):
 
                     kill_q = queue.Queue()
                     error_q = queue.Queue()
+                    dir_complete_q = queue.Queue()
 
-                    check_val = dir_manager(kill_q, error_q)
+                    check_val = dir_manager(kill_q, error_q, dir_complete_q)
                     self.assertIs(check_val, None)
 
 
@@ -905,8 +908,9 @@ class TestDirManager(unittest.TestCase):
 
                     kill_q = queue.Queue()
                     error_q = queue.Queue()
+                    dir_complete_q = queue.Queue()
 
-                    check_val = dir_manager(kill_q, error_q)
+                    check_val = dir_manager(kill_q, error_q, dir_complete_q)
                     self.assertIs(check_val, None)
 
     @mock.patch("onedrive_offsite.workers.flood_kill_queue")
@@ -923,8 +927,9 @@ class TestDirManager(unittest.TestCase):
 
                     kill_q = queue.Queue()
                     error_q = queue.Queue()
+                    dir_complete_q = queue.Queue()
 
-                    check_val = dir_manager(kill_q, error_q)
+                    check_val = dir_manager(kill_q, error_q, dir_complete_q)
                     self.assertIs(check_val, True)
 
 class TestDownloadManager(unittest.TestCase):

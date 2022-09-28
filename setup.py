@@ -5,11 +5,11 @@ with open("README.md", "r") as fh:
 
 setup(
     name='onedrive-offsite',
-    version='1.0.1', 
+    version='0.2.1', # directory retry
     description="Application to automatically encrypt backup files (ex: vma.zst from Proxmox) and push them to Microsoft OneDrive.",
     long_description=readme_long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/shinyshoes404/onedrive-offsite',
+    url='https://git.swilsycloud.com/useful-apps-and-libraries/onedrive-offsite',
     author='shinyshoes',
     author_email='shinyshoes404@protonmail.com',
     license='MIT License',

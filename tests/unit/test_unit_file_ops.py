@@ -153,9 +153,11 @@ class Testcryptfileupload(unittest.TestCase):
             mock_to_up_q = mock.Mock()
             mock_attempt_q = mock.Mock()
             mock_kill_q = mock.Mock()
+            mock_dir_q = mock.Mock()
+            mock_dir_q.empty = mock.PropertyMock(side_effect=[True, False])
             mock_err_q = mock.Mock()
             mock_err_q.empty = mock.PropertyMock(return_value=False)
-            mock_Q.side_effect = [mock_to_up_q, mock_attempt_q, mock_kill_q, mock_err_q]
+            mock_Q.side_effect = [mock_to_up_q, mock_attempt_q, mock_kill_q, mock_err_q, mock_err_q]
 
             check_value = crypt_file_upload()
             self.assertEqual(check_value, False)
@@ -171,9 +173,11 @@ class Testcryptfileupload(unittest.TestCase):
             mock_to_up_q = mock.Mock()
             mock_attempt_q = mock.Mock()
             mock_kill_q = mock.Mock()
+            mock_dir_q = mock.Mock()
+            mock_dir_q.empty = mock.PropertyMock(side_effect=[True, False])
             mock_err_q = mock.Mock()
             mock_err_q.empty = mock.PropertyMock(return_value=True)
-            mock_Q.side_effect = [mock_to_up_q, mock_attempt_q, mock_kill_q, mock_err_q]
+            mock_Q.side_effect = [mock_to_up_q, mock_attempt_q, mock_kill_q, mock_err_q, mock_dir_q]
 
             check_value = crypt_file_upload()
             self.assertEqual(check_value, False)
@@ -189,9 +193,11 @@ class Testcryptfileupload(unittest.TestCase):
             mock_to_up_q = mock.Mock()
             mock_attempt_q = mock.Mock()
             mock_kill_q = mock.Mock()
+            mock_dir_q = mock.Mock()
+            mock_dir_q.empty = mock.PropertyMock(side_effect=[True, False])
             mock_err_q = mock.Mock()
             mock_err_q.empty = mock.PropertyMock(return_value=True)
-            mock_Q.side_effect = [mock_to_up_q, mock_attempt_q, mock_kill_q, mock_err_q]
+            mock_Q.side_effect = [mock_to_up_q, mock_attempt_q, mock_kill_q, mock_err_q, mock_dir_q]
 
             check_value = crypt_file_upload()
             self.assertEqual(check_value, True)

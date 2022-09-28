@@ -69,6 +69,7 @@ def make_tar_gz(dir_with_files: str, tar_gz_dir_path: str, max_chunks_to_add: in
             # set leading zeros assuming we will never have more than 1000 tar.gz files to upload
             lead_zeros = leading_zeros(file_counter, 1000)          
             # create a tar file and compress with gunzip
+            logger.info("creating tar.gz file {0}{1}".format(lead_zeros, file_counter))
             with tarfile.open(os.path.join(tar_gz_dir_path, lead_zeros + str(file_counter) + "_" + base_file_name), "x:gz") as tar:                               
                for file in files:
                     # add the specified file to the tar.gz file
@@ -79,7 +80,7 @@ def make_tar_gz(dir_with_files: str, tar_gz_dir_path: str, max_chunks_to_add: in
                     if removeorig==True:
                         os.remove(os.path.join(dir_with_files,file))
 
-
+            logger.info("done creating tar.gz file {0}{1}".format(lead_zeros, file_counter))
             file_counter = file_counter + 1
 
     except Exception as e:

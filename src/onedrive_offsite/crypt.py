@@ -44,9 +44,16 @@ class Crypt:
             logger.error("problem reading key file in fetch_key()")
             logger.error(e)
             return False
-    
+
+    def log_chunk(self, chunk_count, file_name):
+        if chunk_count%100 == 1: # % = modulo, which returns a remainder
+            logger.info("encrypted chunk check-in - created: {0}".format(file_name))
+            return True
+        return False
+
     def chunk_encrypt(self, file_to_encrypt, dir_for_chunks, chunk_size_mb):
         # get the key
+        logger.info("Fetch encryption key")
         if self.fetch_key() == False:
             return False
 
@@ -60,12 +67,14 @@ class Crypt:
         # determine max file count number
         max_file_count = int(math.pow(10, math.ceil(math.log10(file_size/chunk_size_bytes + 1))) - 1)
 
+       
         try:
             with open(file_to_encrypt, 'rb') as backup_file:
                 # initialize keep_reading with True to start the while loop, will change over to file contents later
                 keep_reading = True
                 i = 1
                 fernet = Fernet(self.key)
+                logger.info("starting to create encrypted chunks")
                 while keep_reading:
                     # read and encrypt data a chunk at a time
                     keep_reading = backup_file.read(chunk_size_bytes)
@@ -73,13 +82,17 @@ class Crypt:
                         encrypted = fernet.encrypt(keep_reading)
                         with open(dir_for_chunks + '/' + leading_zeros(i,max_file_count) + str(i) + '_backup.crypt', 'wb') as chunk_file:
                             chunk_file.write(encrypted)
+                            self.log_chunk(i, chunk_file.name) # log every 100 chunk files that are created to provide a hint that the process is stil running
                             i = i + 1
+                logger.info("done encrypting chunks")
                 return True
 
         except Exception as e:
             logger.error("problem creating encrypted file chunks in chunk_encrypt()")
             logger.error(e)
             return False
+
+
 
     def chunk_decrypt(self,dir_with_chunks, combined_unencrypted_file_path, removeorig=False):
         # get the key

@@ -101,9 +101,12 @@ class TestOneDriveDirMgr_check_dir_exits(unittest.TestCase):
         with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
             with mock.patch("onedrive_offsite.onedrive.OneDriveDirMgr.__init__", return_value=None) as mock_init:           
                 with mock.patch("onedrive_offsite.onedrive.requests.get", side_effect=Exception("fake exception")) as mock_get:
-                    oddm = OneDriveDirMgr("fakeaccesstoken")
+                    mock_msgcm = mock.Mock()
+                    mock_msgcm.access_token = "fakeaccesstoken"
+                    oddm = OneDriveDirMgr(mock_msgcm)
                     # manually setting this since we mocked __init__()
                     oddm.dir_name = "backup_test_2"
+                    oddm.msgcm = mock_msgcm
                     check_value = oddm._check_dir_exists()
                     self.assertEqual(check_value, "error - exception")
 
@@ -112,7 +115,10 @@ class TestOneDriveDirMgr_check_dir_exits(unittest.TestCase):
         with mock.patch("onedrive_offsite.onedrive.open") as mock_open:
             with mock.patch("onedrive_offsite.onedrive.OneDriveDirMgr.__init__", return_value=None) as mock_init: 
                 with mock.patch("onedrive_offsite.onedrive.requests.get") as mock_get: # will create an unaccounted for error
-                    oddm = OneDriveDirMgr("fakeaccesstoken")
+                    mock_msgcm = mock.Mock()
+                    mock_msgcm.access_token = "fakeaccesstoken"
+                    oddm = OneDriveDirMgr(mock_msgcm)
+                    oddm.msgcm = mock_msgcm
                     # manually setting these since we mocked __init__()
                     oddm.dir_name = "backup_test_2"
                     oddm.api_url = "https://fakeurl"
@@ -127,8 +133,11 @@ class TestOneDriveDirMgr_check_dir_exits(unittest.TestCase):
             with mock.patch("onedrive_offsite.onedrive.OneDriveDirMgr.__init__", return_value=None) as mock_init: 
                 with mock.patch("onedrive_offsite.onedrive.requests.get") as mock_get: 
                     mock_get.return_value.status_code = 404
-                    oddm = OneDriveDirMgr("fakeaccesstoken")
+                    mock_msgcm = mock.Mock()
+                    mock_msgcm.access_token = "fakeaccesstoken"
+                    oddm = OneDriveDirMgr(mock_msgcm)
                     # manually setting these since we mocked __init__()
+                    oddm.msgcm = mock_msgcm
                     oddm.dir_name = "backup_test_2"
                     oddm.api_url = "https://fakeurl"
                     oddm.headers = {"fakeheader":"fake header value"}
@@ -150,8 +159,12 @@ class TestOneDriveDirMgr_check_dir_exits(unittest.TestCase):
                             "id": "D23D09990A1D5FC9!157"}                    
                     
                     with mock.patch(__name__ + ".OneDriveDirMgr._write_dir_id", return_value = True) as mock_write:
-                        oddm = OneDriveDirMgr("fakeaccesstoken")
+                        
+                        mock_msgcm = mock.Mock()
+                        mock_msgcm.access_token = "fakeaccesstoken"
+                        oddm = OneDriveDirMgr(mock_msgcm)
                         # manually setting these since we mocked __init__()
+                        oddm.msgcm = mock_msgcm
                         oddm.dir_name = "backup_test_2"
                         oddm.api_url = "https://fakeurl"
                         oddm.headers = {"fakeheader":"fake header value"}
@@ -174,8 +187,11 @@ class TestOneDriveDirMgr_check_dir_exits(unittest.TestCase):
                             "id": "D23D09990A1D5FC9!157"}                    
                     
                     with mock.patch(__name__ + ".OneDriveDirMgr._write_dir_id", return_value = False) as mock_write:
-                        oddm = OneDriveDirMgr("fakeaccesstoken")
+                        mock_msgcm = mock.Mock()
+                        mock_msgcm.access_token = "fakeaccesstoken"
+                        oddm = OneDriveDirMgr(mock_msgcm)
                         # manually setting these since we mocked __init__()
+                        oddm.msgcm = mock_msgcm
                         oddm.dir_name = "backup_test_2"
                         oddm.api_url = "https://fakeurl"
                         oddm.headers = {"fakeheader":"fake header value"}
@@ -192,8 +208,11 @@ class TestOneDriveDirMgr__create_onedrive_dir(unittest.TestCase):
             mock_thread_getname.return_value.getName.return_value = "fake-thread"
             with mock.patch("onedrive_offsite.onedrive.OneDriveDirMgr.__init__", return_value=None) as mock_init: 
                 with mock.patch("onedrive_offsite.onedrive.requests.post", side_effect=Exception("fake exception")) as mock_post:
-                        oddm = OneDriveDirMgr("fakeaccesstoken")
+                        mock_msgcm = mock.Mock()
+                        mock_msgcm.access_token = "fakeaccesstoken"
+                        oddm = OneDriveDirMgr(mock_msgcm)
                         # manually setting these since we mocked __init__()
+                        oddm.msgcm = mock_msgcm
                         oddm.dir_name = "backup_test_2"
                         oddm.api_url = "https://fakeurl"
                         oddm.headers = {"fakeheader":"fake header value"}
@@ -208,8 +227,11 @@ class TestOneDriveDirMgr__create_onedrive_dir(unittest.TestCase):
                 with mock.patch("onedrive_offsite.onedrive.requests.post") as mock_post:
                         mock_post.return_value.status_code = 500
                         mock_post.return_value.content = {"err":"fake error msg"}
-                        oddm = OneDriveDirMgr("fakeaccesstoken")
+                        mock_msgcm = mock.Mock()
+                        mock_msgcm.access_token = "fakeaccesstoken"
+                        oddm = OneDriveDirMgr(mock_msgcm)
                         # manually setting these since we mocked __init__()
+                        oddm.msgcm = mock_msgcm
                         oddm.dir_name = "backup_test_2"
                         oddm.api_url = "https://fakeurl"
                         oddm.headers = {"fakeheader":"fake header value"}
@@ -231,8 +253,11 @@ class TestOneDriveDirMgr__create_onedrive_dir(unittest.TestCase):
                                 "eTag": "aRDIzRDA5OTkwQTFENUZDOSExNTcuMA",
                                 "id": "D23D09990A1D5FC9!157"}     
 
-                            oddm = OneDriveDirMgr("fakeaccesstoken")
+                            mock_msgcm = mock.Mock()
+                            mock_msgcm.access_token = "fakeaccesstoken"
+                            oddm = OneDriveDirMgr(mock_msgcm)
                             # manually setting these since we mocked __init__()
+                            oddm.msgcm = mock_msgcm
                             oddm.dir_name = "backup_test_2"
                             oddm.api_url = "https://fakeurl"
                             oddm.headers = {"fakeheader":"fake header value"}
@@ -254,8 +279,11 @@ class TestOneDriveDirMgr__create_onedrive_dir(unittest.TestCase):
                                 "eTag": "aRDIzRDA5OTkwQTFENUZDOSExNTcuMA",
                                 "id": "D23D09990A1D5FC9!157"}     
                                 
-                            oddm = OneDriveDirMgr("fakeaccesstoken")
+                            mock_msgcm = mock.Mock()
+                            mock_msgcm.access_token = "fakeaccesstoken"
+                            oddm = OneDriveDirMgr(mock_msgcm)
                             # manually setting these since we mocked __init__()
+                            oddm.msgcm = mock_msgcm
                             oddm.dir_name = "backup_test_2"
                             oddm.api_url = "https://fakeurl"
                             oddm.headers = {"fakeheader":"fake header value"}

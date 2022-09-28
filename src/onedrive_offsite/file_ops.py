@@ -1,10 +1,11 @@
 from onedrive_offsite.utils import make_tar_gz, file_cleanup, download_file_email, decrypt_email
 from onedrive_offsite.crypt import Crypt, Sha256Calc
 from onedrive_offsite.config import Config
-from onedrive_offsite.workers import token_refresh_worker, file_upload_worker, upload_manager, dir_manager, DownloadWorker, DownloadManager, DownloadDecrypter
+from onedrive_offsite.workers import token_refresh_worker, file_upload_worker, upload_manager, dir_manager, DownloadWorker, DownloadManager, DownloadDecrypter, write_to_error_q, flood_kill_queue
 
 from queue import Queue
 from time import sleep
+from datetime import datetime, timedelta
 import os, json, logging, math, threading
 
 # Logging setup
@@ -15,7 +16,7 @@ logger.addHandler(Config.STOUT_HANDLER)
 
 
 def crypt_file_build():
-
+    logger.info("starting crypt file build")
     # calculate the max number of encrypted chunks we can include in our tar.gz file
     max_chunks_to_add = math.floor(Config.crypt_tar_gz_max_size_mb/Config.crypt_chunk_size_mb)
     if max_chunks_to_add == 0:
@@ -40,8 +41,10 @@ def crypt_file_build():
     
     # create our backup chunk dir if it doesn't exist
     if os.path.isdir(Config.crypt_chunk_dir) == False:
+        logger.info("{0} does not exists, we need to create it".format(Config.crypt_chunk_dir))
         try:
             os.mkdir(Config.crypt_chunk_dir)
+            logger.info("{0} created".format(Config.crypt_chunk_dir))
         except Exception as e:
             logger.error("problem creating crypt_chunk_dir in crypt_upload()")
             logger.error(e)
@@ -57,6 +60,7 @@ def crypt_file_build():
         try:
             with open(os.path.join(Config.etc_basedir, "sha256hash_" + backup_file_info.get("onedrive-dir")), "w") as hash_file:
                 hash_file.write(hash_256)
+                logger.info("hash written to file")
         except Exception as e:
             logger.error("failed to write 256 hash file for {0}".format(backup_file_info.get("backup-file-path")))
             logger.error(e)
@@ -65,14 +69,18 @@ def crypt_file_build():
         logger.warning("could not calculate the sha 256 hash for {0}".format(backup_file_info.get("backup-file-path")))
     
     # break our backup file into encrypted chunks
+    logger.info("break backup file into encrypted chunks")
     if crypt.chunk_encrypt(backup_file_info.get("backup-file-path"), Config.crypt_chunk_dir, Config.crypt_chunk_size_mb) == False:
         # bail out, cleanup files, and send notification email
         file_cleanup(error=True)
         return False
+    logger.info("done encrypting chunks")
     
     # make sure our targz directory exists
     if os.path.isdir(Config.crypt_tar_gz_dir) == False:
+        logger.info("{0} doesn't exist, attempt to make it".format(Config.crypt_tar_gz_dir))
         os.mkdir(Config.crypt_tar_gz_dir)
+        logger.info("directory successfully created")
 
     if os.environ.get("ONEDRIVE_NAME") != None:
         base_file_name = os.environ.get("ONEDRIVE_NAME")
@@ -81,6 +89,8 @@ def crypt_file_build():
     
     logger.debug("Using base_file_name = {0}".format(base_file_name))
 
+    logger.info("start combining encrypted chunks into tar.gz files")
+    
     # combine all of the encrypted chunks into tar.gz files - deleting the encrypted chunks as they are added to the tar.gz file
     if make_tar_gz(Config.crypt_chunk_dir, os.path.join(Config.crypt_tar_gz_dir),max_chunks_to_add, base_file_name, removeorig=True) == False:
         # bail out, cleanup files, and send notification email
@@ -89,6 +99,11 @@ def crypt_file_build():
 
     return True
 
+def _check_time(start_time, hrs):
+    if datetime.now() > start_time + timedelta(hours=hrs):
+        return True
+    else:
+        return False
 
 def crypt_file_upload():
 
@@ -96,11 +111,12 @@ def crypt_file_upload():
     upload_attempted_q = Queue()
     kill_q = Queue()
     error_q = Queue()
+    dir_complete_q = Queue()
 
     upload_file_list = sorted(os.listdir(Config.crypt_tar_gz_dir))
 
     credential_thread = threading.Thread(target=token_refresh_worker, name="cred-thread", args=[kill_q, error_q])
-    directory_manager = threading.Thread(target=dir_manager, name="dir-manager", args=[kill_q, error_q])
+    directory_manager = threading.Thread(target=dir_manager, name="dir-manager", args=[kill_q, error_q, dir_complete_q])
     manager_thread = threading.Thread(target=upload_manager, name="manager-thread", args=[upload_file_list, to_upload_q, upload_attempted_q, kill_q, error_q])
     upload_thread_1 = threading.Thread(target=file_upload_worker, name="worker-thread-1", args=[to_upload_q, upload_attempted_q, kill_q])
     upload_thread_2 = threading.Thread(target=file_upload_worker, name="worker-thread-2", args=[to_upload_q, upload_attempted_q, kill_q])
@@ -109,9 +125,20 @@ def crypt_file_upload():
     upload_thread_5 = threading.Thread(target=file_upload_worker, name="worker-thread-5", args=[to_upload_q, upload_attempted_q, kill_q])
 
     credential_thread.start()
-    sleep(5)
+    sleep(10)
+    
     directory_manager.start()
-    sleep(50)
+    start_time = datetime.now()
+
+    while dir_complete_q.empty():
+        if _check_time(start_time, 2) == True:
+            logger.error("The directory manager thread is taking too long. Flooding the kill queue")
+            flood_kill_queue(kill_q)
+            write_to_error_q(error_q)
+            break
+        else:
+            sleep(30) # wait for dir manager to finish
+
     manager_thread.start()
     sleep(2)
     upload_thread_1.start()

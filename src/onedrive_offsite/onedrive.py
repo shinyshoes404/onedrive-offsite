@@ -454,11 +454,10 @@ class MSGraphCredMgr:
 
 
 class OneDriveDirMgr:
-    def __init__(self, access_token):
+    def __init__(self, msgcm):
         thread_name = threading.current_thread().getName()
-        self.access_token = access_token
+        self.msgcm = msgcm
         self.api_url = Config.api_url + '/v1.0/me/drive/special/approot/children'
-        self.headers = {"Authorization": "Bearer " + access_token}
 
         info_json = read_backup_file_info()
         if not info_json:
@@ -491,6 +490,13 @@ class OneDriveDirMgr:
     
     def _check_dir_exists(self):
         thread_name = threading.current_thread().getName()
+
+        if self.msgcm.read_tokens() == False:
+            logger.error("thread: {0} - unable to read tokens".format(thread_name))
+            return None 
+        
+        self.headers = {"Authorization": "Bearer " + self.msgcm.access_token}
+
         try:
             status_resp = requests.get(url=self.api_url + '/' + self.dir_name, timeout=Config.api_timeout, headers=self.headers)    # see if directory already exits
         except Exception as e:
@@ -507,13 +513,22 @@ class OneDriveDirMgr:
                 logger.info("thread: {0} - directory: {1} already exists".format(thread_name ,self.dir_name))
                 return True     # directory does exist and we recoreded its id
             else:
+                logger.error("thread: {0} - error writing directory: {1}".format(thread_name, self.dir_name))
                 return "error - write"
         else:
+            logger.error("thread: {0} - unexpected error while checking the status of directory: {1}".format(thread_name, self.dir_name))
+            logger.error("thread: {0} - status code: {1}".format(thread_name, status_resp.status_code))
+            logger.error("thread: {0} - response body: \n {1}".format(thread_name, status_resp.content))
             return "error - unknown"     # something unexpected happened
     
     def _create_onedrive_dir(self):
         thread_name = threading.current_thread().getName()
 
+        if self.msgcm.read_tokens() == False:
+            logger.error("thread: {0} - unable to read tokens".format(thread_name))
+            return None 
+            
+        self.headers = {"Authorization": "Bearer " + self.msgcm.access_token}
         body = {"name": self.dir_name, "folder": {}}
 
         try:
@@ -536,17 +551,43 @@ class OneDriveDirMgr:
             logger.error("thread: {0} - status code: {1}  content: {2}".format(thread_name, create_resp.status_code, create_resp.content))
             return False
     
+    def _retry_sleep(self, attempt_count):
+        thread_name = threading.current_thread().getName()
+
+        if attempt_count == 1:
+            logger.warning("thread: {0} - retry directory check in 20 sec".format(thread_name))
+            sleep(20)
+            return True
+        elif attempt_count == 2:
+            logger.warning("thread: {0} - retry directory check in 10 min".format(thread_name))
+            sleep(600)
+            return True
+        elif attempt_count == 3:
+            logger.warning("thread: {0} - retry directory check in 30 min".format(thread_name))
+            sleep(1800)
+            return True
+        else:
+            logger.error("thread: {0} - retries exceeded, stop retrying".format(thread_name))
+            return False
+    
     def create_dir(self):
         thread_name = threading.current_thread().getName()
 
-        dir_check_status = self._check_dir_exists()
-        if dir_check_status != True and dir_check_status != False:
-            logger.warning("thread: {0} - problem checking directory status, wait 20 seconds and try again".format(thread_name))
-            sleep(20)
+        retry_flag = True
+        attempt_count = 1
+
+        while retry_flag == True:
             dir_check_status = self._check_dir_exists()
             if dir_check_status != True and dir_check_status != False:
-                logger.error("thread: {0} - could not check directory status")
-                return None
+                logger.warning("thread: {0} - problem checking directory status".format(thread_name))
+                retry_flag = self._retry_sleep(attempt_count)
+                if retry_flag == False:
+                    logger.error("thread: {0} - could not check directory status".format(thread_name))
+                    return None # all retries used up, need to report a failure
+                attempt_count = attempt_count + 1
+            else:
+                retry_flag = False # result was either True or False, no need to retry
+
         
         if dir_check_status == False:
             logger.info("thread: {0} - directory: {1} does not exist, let's make it".format(thread_name, self.dir_name))

@@ -417,30 +417,38 @@ def upload_manager(upload_file_list, to_upload_q, upload_attempted_q, kill_q, er
 #######################################################################################################################
 ##### ----------------------------------------------- DIR MANAGER -----------------------------------------------------
 
-def dir_manager(kill_q, error_q):
+def _write_to_dir_complete_q(dir_complete_q):
+    thread_name = threading.current_thread().getName()
+    msg = "done"
+    try:
+        dir_complete_q.put(msg)
+        logger.info("thread: {0} - put this message on the dir complete queue - msg: {1}".format(thread_name, str(msg)))
+        return True            
+    except Exception as e:
+        logger.error("thread: {0} - problem putting msg on dir complete queue".format(thread_name))
+        logger.error(e)
+        return False
+
+def dir_manager(kill_q, error_q, dir_complete_q):
     thread_name = threading.current_thread().getName()
     msgcm = MSGraphCredMgr()
-
-    if msgcm.read_tokens() == False:
-        logger.error("thread: {0} - unable to read tokens, flooding kill queue".format(thread_name))
-        flood_kill_queue(kill_q)
-        write_to_error_q(error_q)
-        return None    
-    
-    oddm = OneDriveDirMgr(msgcm.access_token)
+    oddm = OneDriveDirMgr(msgcm)
 
     if oddm.dir_name == None:
         logger.error("thread: {0} - problem retrieving dir_name, flooding kill queue".format(thread_name))
         flood_kill_queue(kill_q)
         write_to_error_q(error_q)
+        _write_to_dir_complete_q(dir_complete_q)
         return None
     
     if not oddm.create_dir():
-        logger.error("thread: {0} - unable to create onedrive directory, flooding kill queue".format(thread_name))
+        logger.error("thread: {0} - unable to verify or create onedrive directory, flooding kill queue".format(thread_name))
         flood_kill_queue(kill_q)
         write_to_error_q(error_q)
+        _write_to_dir_complete_q(dir_complete_q)
         return None
     else:
+        _write_to_dir_complete_q(dir_complete_q)
         return True
 
 

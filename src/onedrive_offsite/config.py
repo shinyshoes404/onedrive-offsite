@@ -88,7 +88,7 @@ class Config:
     LOG_LEVEL = logging.INFO
     LOG_FORMAT = logging.Formatter(" %(asctime)s - [%(levelname)s] - %(name)s - %(message)s", "%Y-%m-%d %H:%M:%S %z")
     LOG_MAXBYTES = 20000000
-    LOG_BACKUP_COUNT = 1
+    LOG_BACKUP_COUNT = 2
  
     FILE_HANDLER = RotatingFileHandler(LOG_PATH, maxBytes=LOG_MAXBYTES, backupCount=LOG_BACKUP_COUNT) 
     FILE_HANDLER.setLevel(LOG_LEVEL)
