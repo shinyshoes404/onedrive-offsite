@@ -21,7 +21,7 @@ onedrive-offsite is an application that encrypts backup files (ex: vma.zst from 
  - [Install and setup guide](#install-and-setup-guide)
  - [API endpoints](#api-endpoints)
  - [Developing and testing](#developing-and-testing)
- - [Toplogy diagrams](#topology-diagrams)
+ - [Topology diagrams](#topology-diagrams)
  - [How to register an app in Microsoft Azure portal](#how-to-register-an-app-in-microsoft-azure-portal)
  - [Example bash scripts](#example-bash-scripts)
 
@@ -53,27 +53,27 @@ To successfully deploy onedrive-offsite you will need the following:
 
 ### Register app with Microsoft
 
-For an application to be able to use Microsoft's Graph API and Oauth, it first has to be registered in the Azure portal. This is how Microsoft keeps track of applications that are accessing its resources and asking Microsoft account holders to grant access. To register the application, go to <a href="https://portal.azure.com">portal.azure.com</a>, login with your Microsoft account, and register a new application. You will need the client ID and client secret created during registration to setup onedrive-offsite. For detailed instructions for registring an application with the Azure Portal, see the [How to - Register an app in Microsoft Azure Portal](#how-to-register-an-app-in-microsoft-azure-portal) section.
+For an application to be able to use Microsoft's Graph API and Oauth, it first has to be registered in the Azure portal. This is how Microsoft keeps track of applications that are accessing its resources and asking Microsoft account holders to grant access. To register the application, go to <a href="https://portal.azure.com">portal.azure.com</a>, login with your Microsoft account, and register a new application. You will need the client ID and client secret created during registration to setup onedrive-offsite. For detailed instructions for registering an application with the Azure Portal, see the [How to - Register an app in Microsoft Azure Portal](#how-to-register-an-app-in-microsoft-azure-portal) section.
 
 ### Setup your environment
  - Setup a linux machine with docker and docker compose installed
  - Decide where on the docker host you want to store the files that need to be backed up. 
      - You will need to consider how much disk space is required to temporarily store the files you intend to backup, as well as intermediate files generated during the offsite backup process.
     - **Disk space requirements:** backup file size x 2.3
-    - **Example:** if you have a 100 GB file you want to backup, you will need enough disk space to store a copy of the 100 GB file, plus enough space to temporarily store 130 GB during the encryptiong process.
+    - **Example:** if you have a 100 GB file you want to backup, you will need enough disk space to store a copy of the 100 GB file, plus enough space to temporarily store 130 GB during the encrypting process.
     - The backup files that get sent to Onedrive will only be about 1% larger than the original backup files, but before compression the encrypted files are 30% larger than the originals.
     - **Note: Files to be backed up are deleted after the backup process runs - this shouldn't be your only copy of the files you want to backup.**
  - There are three likely scenarios for onedrive-offsite to access the files to be backed up:
     1. The files we want to backup to Onedrive are stored on the docker host machine that will run our onedrive-offsite application container and can easily be copied to the onedrive-offsite backup working directory
     2. Our docker host machine has access to a network share with the files we want to backup to Onedrive, and can easily copy the files to the working directory
     3. The files we want to backup to Onedrive are stored on a machine running on the same network as our docker host and we can transfer files to the application container using scp
- - See the [Topology diagrams](#topology-diagrams) secion below for a further illustration of possible enviroment configurations
+ - See the [Topology diagrams](#topology-diagrams) section below for a further illustration of possible enviroment configurations
 
 ### Build the docker image
  - Clone this project to your docker host machine
  - Edit the email information in src/onedrive_offsite/config.py
  - Review the Dockerfile
-     - Set the timezone you want in the ENVS section
+     - Set the time zone you want in the ENVS section
      - If you don't plan to send files directly to your onedrive-offsite container via scp, you could comment out the entire SSH section and modify the ENTRYPOINT to eliminate the ssh service restart and key gen.
  - Build the docker image
      - Move into the root of the onedrive-offsite project directory
@@ -101,8 +101,8 @@ For an application to be able to use Microsoft's Graph API and Oauth, it first h
     ```  
  - Generate your encrpytion key
     - Run the `onedrive-offsite-create-key` command
-    - This will create the symmetric encryption key used to protect the files we will backup to Onedrive. Becasue this is a symmetric key, you should treat it like you would a password.
-    - You will want to save a copy of the key you just created in the event your docker host machine has a catasrophic failure, and you have to setup onedrive-offsite on a new machine. The key is saved in `/etc/onedrive-offsite/onedrive-offsite.key`
+    - This will create the symmetric encryption key used to protect the files we will backup to Onedrive. Because this is a symmetric key, you should treat it like you would a password.
+    - You will want to save a copy of the key you just created in the event your docker host machine has a catastrophic failure, and you have to setup onedrive-offsite on a new machine. The key is saved in `/etc/onedrive-offsite/onedrive-offsite.key`
     - Note that the /etc/onedrive-offsite directory is mapped to a docker volume so that the key will persist between container restarts.
  - Setup your app configuration
     - Make sure you have your app client ID and client secret handy from the app registration process

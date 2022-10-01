@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='onedrive-offsite',
-    version='0.2.1', # directory retry
+    version='1.0.0', # moving to major version 1 since we have been running in production for a while
     description="Application to automatically encrypt backup files (ex: vma.zst from Proxmox) and push them to Microsoft OneDrive.",
     long_description=readme_long_description,
     long_description_content_type="text/markdown",
@@ -33,7 +33,7 @@ setup(
         'dev': ['coverage']
     },
 
-    python_requires = '>=3.7.*',
+    python_requires = '>=3.8.*',
 
     classifiers=[
         'License :: OSI Approved :: MIT License',
