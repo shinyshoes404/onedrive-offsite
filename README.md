@@ -172,7 +172,7 @@ Now that the application is up and running, we need a way to to initiate the bac
 ### Other helpful commands
 
  - Get file size in bytes in bash shell `stat -c %s file_we_want_size_in_bytes_of`
- - Example curl commands when developing on a Windows machine and running the app locally with the flak development server - assumes the file you want to backup is located at `C:\Users\yourusername\Documents\Dev\onedrive-offsite\test_backup_file.tar` and is 150000 bytes
+ - Example curl commands when developing on a Windows machine and running the app locally with the flask development server - assumes the file you want to backup is located at `C:\Users\yourusername\Documents\Dev\onedrive-offsite\test_backup_file.tar` and is 150000 bytes
      - Initiate the backup process `curl  -d '{"file-path":"C:\\Users\\yourusername\\Documents\\Dev\\onedrive-offsite\\test_backup_file.tar","username":"yourusername","size-bytes": 150000,"onedrive-filename":"offsite_test_backup.tar.gz", "onedrive-dir":"offsite_test_backup"}' -H 'Content-Type:application/json' -X POST http://localhost:5000/transfer/start`
      - Indicate that the file you want sent to Onedrive has finished copying to the file location specified in the initiation request and is ready to start the encryption and backup process `curl  -H 'Content-Type:application/json' -X PUT http://localhost:5000/transfer/done`
      - Download, decrypt, and reassemble the backup saved to Onedrive `curl  -d '{"onedrive-dir":"offsite_test_backup"}' -H 'Content-Type:application/json' -X POST http://localhost:5000/download-decrypt`

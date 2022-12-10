@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='onedrive-offsite',
-    version='1.0.0', # moving to major version 1 since we have been running in production for a while
+    version='1.0.1',
     description="Application to automatically encrypt backup files (ex: vma.zst from Proxmox) and push them to Microsoft OneDrive.",
     long_description=readme_long_description,
     long_description_content_type="text/markdown",
