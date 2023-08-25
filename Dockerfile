@@ -4,7 +4,7 @@
 # $ export DOCKER_BUILDKIT=1
 # $ docker build -t onedrive-offsite:latest .
 
-FROM python:3.10.1-slim-bullseye
+FROM python:3.11-slim-bullseye
 
 
 #### ---- ARGS AND ENVS FOR BUILD ---- ####
@@ -95,7 +95,9 @@ RUN mkdir -p ${PY_APP_DIR} && \
     chown ${USERNAME}:${USERNAME} ${BACKUP_FILES_DIR} && \
     chmod 700 ${BACKUP_FILES_DIR} && \
     mkdir -p /home/${FILE_USER}/backup_files && chmod 777 /home/${FILE_USER}/backup_files && \
-    apt-get install python3-pip -y && \
+    python -m pip install --upgrade pip && \
+    python -m pip install --upgrade setuptools && \
+    python -m pip install --upgrade wheel && \
     pip install gunicorn
 
 # copy the entire project into container image, so we can install it

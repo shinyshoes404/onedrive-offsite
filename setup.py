@@ -9,7 +9,7 @@ setup(
     description="Application to automatically encrypt backup files (ex: vma.zst from Proxmox) and push them to Microsoft OneDrive.",
     long_description=readme_long_description,
     long_description_content_type="text/markdown",
-    url='https://git.swilsycloud.com/useful-apps-and-libraries/onedrive-offsite',
+    url='https://github.com/shinyshoes404/onedrive-offsite',
     author='shinyshoes',
     author_email='shinyshoes404@protonmail.com',
     license='MIT License',
@@ -33,14 +33,15 @@ setup(
         'dev': ['coverage']
     },
 
-    python_requires = '>=3.8.*',
+    python_requires = '>=3.8,!=3.12.*',
 
     classifiers=[
         'License :: OSI Approved :: MIT License',
-        'Operating System :: Microsoft :: Windows :: Windows 10',
+        'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX :: Linux',           
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10'
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11'
     ],
 )

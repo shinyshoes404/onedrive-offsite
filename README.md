@@ -1,11 +1,9 @@
-# onedrive-offsite
-
 ## Overview
 
 onedrive-offsite is an application that encrypts backup files (ex: vma.zst from Proxmox) and pushes them to Microsoft Onedrive via the MS Graph API to create an offsite backup. This application uses a REST API to trigger encryption and offsite backup, as well as download and decryption. Once the offsite backup or download operation is completed successfully, or experiences an error, an email notification is sent using AWS SES.  
 
 ### Highlights
- - This is a containerized application that uses docker and a base image of python:3.10.1-slim-bullseye
+ - This is a containerized application that uses docker and a base image of python:3.11-slim-bullseye
  - The REST API uses Flask and gunicorn
  - Fernet encryption is used to both encrypt and guarantee that files are not modified
  - The sha256 hash of the original file to be backed up is calculated and stored to verify against during the download and decrypt process
@@ -160,7 +158,7 @@ Now that the application is up and running, we need a way to to initiate the bac
 ### Install for development
  
  - Clone this project to your machine
- - Create a python virtual environment with python 3.10 installed
+ - Create a python virtual environment with python 3.11 installed
  - Install onedrive-offsite with dev dependencies by running `pip install -e .[dev]` in the project root directory
  - Set an environment variable to indicate this is a development environment `export ONEDRIVE_ENV=dev`
 
