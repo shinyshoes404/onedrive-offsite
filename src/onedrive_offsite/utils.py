@@ -199,10 +199,6 @@ def ses_send_email(to_email_address: str, from_email_address: str, email_from_na
                             msgsubject=email_subject,           # Optional
                             aws_region=ses_aws_region)          # Required
 
-    # validate the arguments and credentials before trying to send our email using the ses_validate method
-    check_validation = ses_send_obj.ses_validate()
-    if check_validation == False:
-        return False
 
     # if everything validated, try to send the email
     logger.info("Attempting to send an email To: {0}   From: {1}".format(to_email_address, from_email_address))

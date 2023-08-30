@@ -190,23 +190,15 @@ class TestUtilFPR(unittest.TestCase):
 
 
 class TestUtilsessendemail(unittest.TestCase):
-
-    @mock.patch('onedrive_offsite.utils.SESSender')
-    def test_unit_fail_validate(self, mock_sessender):
-        mock_sessender.return_value.ses_validate.return_value = False
-        check_value = ses_send_email("to@email.com", "from@email.com", "fromname", "my email msg","email subject", "aws region" )
-        self.assertFalse(check_value, "Expecting failed validation")
     
     @mock.patch('onedrive_offsite.utils.SESSender')
     def test_unit_send_email_success(self, mock_sessender):
-        mock_sessender.return_value.ses_validate.return_value = True
         mock_sessender.return_value.send_email.return_value = "fakemsgID"
         check_value = ses_send_email("to@email.com", "from@email.com", "fromname", "my email msg","email subject", "aws region" )
         self.assertTrue(check_value, "Expecting successful send")
 
     @mock.patch('onedrive_offsite.utils.SESSender')
     def test_unit_send_email_except(self, mock_sessender):
-        mock_sessender.return_value.ses_validate.return_value = True
         mock_sessender.return_value.send_email.side_effect = Exception("fake send_email exception")
         check_value = ses_send_email("to@email.com", "from@email.com", "fromname", "my email msg","email subject", "aws region" )
         self.assertFalse(check_value, "Expecting exception")
